@@ -1,8 +1,9 @@
 import { type PyodideInterface, ensurePackage } from "../runtime/pyodide-loader";
 import { executePythonTool } from "../runtime/bridge";
 import { store } from "../state/store";
-import { parseTask } from "./parser";
+import { parseTask, type AgentPlan } from "./parser";
 import { route } from "./router";
+import { planWithClaude, getStoredKey } from "./claude-planner";
 
 const PHASE_DELAY_MS = 220;
 
@@ -30,10 +31,25 @@ export async function runAgent({ task, pyodide }: RunOptions): Promise<void> {
   }
 
   log("Planner", "info", `Received task: "${task}"`);
-  log("Planner", "info", "Parsing natural language intent...");
-  await sleep(PHASE_DELAY_MS);
 
-  const plan = parseTask(task, store.get().workspace.files);
+  const claudeKey = getStoredKey();
+  let plan: AgentPlan;
+
+  if (claudeKey) {
+    log("Planner", "info", `Calling Claude (${"claude-sonnet-4-6"}) for structured plan...`);
+    try {
+      plan = await planWithClaude(task, store.get().workspace.files, claudeKey);
+      log("Planner", "ok", `Claude returned a ${plan.selectedTools.length}-step plan.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log("Planner", "warn", `Claude planner failed (${msg}). Falling back to heuristic.`);
+      plan = parseTask(task, store.get().workspace.files);
+    }
+  } else {
+    log("Planner", "info", "Parsing natural language intent (heuristic — paste an Anthropic key for Claude planning)...");
+    await sleep(PHASE_DELAY_MS);
+    plan = parseTask(task, store.get().workspace.files);
+  }
   store.set({
     steps: plan.steps,
     selectedTools: plan.selectedTools.map((t) => t.name),

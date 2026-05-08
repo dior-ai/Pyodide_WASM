@@ -11,6 +11,7 @@ import { mountToolSidebar } from "./ui/tool-sidebar";
 import { mountPhaseFlow } from "./ui/phase-flow";
 import { mountWorkspacePanel } from "./ui/workspace-panel";
 import { mountReplPanel } from "./ui/repl-panel";
+import { mountClaudeKeyControl } from "./ui/claude-key";
 import { exportRunReport } from "./ui/export";
 
 let pyodide: PyodideInterface | null = null;
@@ -110,6 +111,7 @@ function buildLayout(): void {
   });
 
   mountPhaseFlow(left);
+  mountClaudeKeyControl(left);
   mountWorkspacePanel(left);
   mountConsole(left);
   mountResultPanel(left);
