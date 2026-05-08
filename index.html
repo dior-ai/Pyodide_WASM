@@ -11,6 +11,14 @@
     />
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='28' fill='%2300e5ff' opacity='.15'/><circle cx='32' cy='32' r='10' fill='%2300e5ff'/></svg>" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <!--
+      Pyodide is a real npm dependency. Its assets are copied from
+      node_modules/pyodide into public/pyodide/ at install time
+      (see scripts/copy-pyodide.mjs). We load the IIFE build here so
+      Vite serves it as a static asset rather than trying to bundle
+      the ES-module wrapper, which would hit the public/-import wall.
+    -->
+    <script src="/pyodide/pyodide.js"></script>
   </head>
   <body class="bg-canvas text-slate-100 font-display antialiased min-h-screen">
     <div id="app" class="min-h-screen flex flex-col"></div>

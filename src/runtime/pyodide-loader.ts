@@ -1,17 +1,24 @@
 // Pyodide is a real npm dependency (see package.json). The runtime assets are
 // copied out of node_modules/pyodide into public/pyodide/ at install time by
-// scripts/copy-pyodide.mjs. We then load the official `pyodide.mjs` wrapper as
-// a runtime dynamic import so Vite doesn't try to statically bundle Pyodide's
-// conditional Node-only code paths. End result: 100% self-hosted, no CDN.
+// scripts/copy-pyodide.mjs. The IIFE build is loaded via a <script> tag in
+// index.html — that's the supported way to consume static files under
+// public/ in Vite (importing public files from JS source is forbidden by
+// Vite's plugin pipeline). End result: 100% self-hosted, no CDN.
 
-// Import the official type definitions from the npm package so our TS code
-// stays strictly typed even though the wrapper is loaded at runtime.
-import type { PyodideInterface as PyodideAPI } from "pyodide";
+import type {
+  PyodideInterface as PyodideAPI,
+  loadPyodide as loadPyodideFn,
+} from "pyodide";
 
 export type PyodideInterface = PyodideAPI;
 
+declare global {
+  interface Window {
+    loadPyodide: typeof loadPyodideFn;
+  }
+}
+
 const PYODIDE_INDEX = "/pyodide/";
-const PYODIDE_ENTRY = `${PYODIDE_INDEX}pyodide.mjs`;
 
 let pyodidePromise: Promise<{ pyodide: PyodideInterface; loadMs: number }> | null = null;
 
@@ -24,19 +31,16 @@ export function loadPyodideRuntime(
     const t0 = performance.now();
     onProgress?.("Loading WebAssembly runtime from /pyodide/...");
 
-    // Vite ignores this string (we want runtime resolution, not bundling).
-    const mod = (await import(/* @vite-ignore */ PYODIDE_ENTRY)) as {
-      loadPyodide: (opts: {
-        indexURL: string;
-        stdout?: (m: string) => void;
-        stderr?: (m: string) => void;
-      }) => Promise<PyodideInterface>;
-    };
+    if (typeof window.loadPyodide !== "function") {
+      throw new Error(
+        "window.loadPyodide is not defined. The <script src=\"/pyodide/pyodide.js\"> tag in index.html may have failed to load — verify that public/pyodide/ exists (run `npm run copy-pyodide`).",
+      );
+    }
 
-    const pyodide = await mod.loadPyodide({
+    const pyodide = await window.loadPyodide({
       indexURL: PYODIDE_INDEX,
-      stdout: (msg) => console.debug("[py.stdout]", msg),
-      stderr: (msg) => console.warn("[py.stderr]", msg),
+      stdout: (msg: string) => console.debug("[py.stdout]", msg),
+      stderr: (msg: string) => console.warn("[py.stderr]", msg),
     });
 
     onProgress?.("Bootstrapping CPython 3.12 in WASM...");
