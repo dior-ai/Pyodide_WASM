@@ -9,6 +9,7 @@ import { mountConsole } from "./ui/console";
 import { mountResultPanel } from "./ui/result-panel";
 import { mountToolSidebar } from "./ui/tool-sidebar";
 import { mountPhaseFlow } from "./ui/phase-flow";
+import { mountWorkspacePanel } from "./ui/workspace-panel";
 import { exportRunReport } from "./ui/export";
 
 let pyodide: PyodideInterface | null = null;
@@ -26,15 +27,9 @@ async function main(): Promise<void> {
     runtime: { ...store.get().runtime, statusText: "Loading WebAssembly..." },
   });
 
-  // Boot Pyodide and fetch the simulated workspace in parallel.
-  const [{ pyodide: py, loadMs }] = await Promise.all([
-    loadPyodideRuntime((msg) =>
-      store.set({
-        runtime: { ...store.get().runtime, statusText: msg },
-      }),
-    ),
-    loadWorkspace(),
-  ]);
+  const { pyodide: py, loadMs } = await loadPyodideRuntime((msg) =>
+    store.set({ runtime: { ...store.get().runtime, statusText: msg } }),
+  );
 
   pyodide = py;
   store.set({
@@ -48,23 +43,8 @@ async function main(): Promise<void> {
   store.pushLog({
     source: "System",
     level: "ok",
-    message: `WebAssembly runtime online (${loadMs} ms · ${store.get().workspace.files.length} workspace files indexed).`,
+    message: `WebAssembly runtime online (${loadMs} ms). Drop files into the workspace to begin.`,
   });
-}
-
-async function loadWorkspace(): Promise<void> {
-  try {
-    const res = await fetch("/mock-fs.json");
-    const data = await res.json();
-    store.set({ workspace: { files: data.files ?? [] } });
-  } catch (err) {
-    console.warn("Failed to load mock workspace", err);
-    store.pushLog({
-      source: "System",
-      level: "warn",
-      message: "Could not load workspace fixture (mock-fs.json).",
-    });
-  }
 }
 
 function getPyVersion(py: PyodideInterface): string {
@@ -129,6 +109,7 @@ function buildLayout(): void {
   });
 
   mountPhaseFlow(left);
+  mountWorkspacePanel(left);
   mountConsole(left);
   mountResultPanel(left);
   mountToolSidebar(right);

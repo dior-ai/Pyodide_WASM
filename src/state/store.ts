@@ -1,3 +1,5 @@
+import type { WorkspaceFile } from "./workspace";
+
 export type AgentPhase =
   | "idle"
   | "loading_runtime"
@@ -33,7 +35,7 @@ export interface AgentState {
   tool_history: ToolHistoryEntry[];
   final_output: string;
   logs: LogLine[];
-  workspace: { files: unknown[] };
+  workspace: { files: WorkspaceFile[] };
   runtime: {
     pyodideReady: boolean;
     loadMs: number | null;
@@ -100,6 +102,33 @@ class Store {
       phase: "ready",
     };
     this.notify();
+  }
+
+  addWorkspaceFiles(files: WorkspaceFile[]): void {
+    if (files.length === 0) return;
+    this.update((s) => {
+      const seen = new Set(s.workspace.files.map((f) => `${f.name}:${f.size_bytes}`));
+      const merged = [...s.workspace.files];
+      for (const f of files) {
+        const key = `${f.name}:${f.size_bytes}`;
+        if (!seen.has(key)) {
+          merged.push(f);
+          seen.add(key);
+        }
+      }
+      return { ...s, workspace: { files: merged } };
+    });
+  }
+
+  removeWorkspaceFile(id: string): void {
+    this.update((s) => ({
+      ...s,
+      workspace: { files: s.workspace.files.filter((f) => f.id !== id) },
+    }));
+  }
+
+  clearWorkspace(): void {
+    this.update((s) => ({ ...s, workspace: { files: [] } }));
   }
 
   subscribe(fn: Listener): () => void {

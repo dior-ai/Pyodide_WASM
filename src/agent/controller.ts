@@ -18,6 +18,13 @@ export async function runAgent({ task, pyodide }: RunOptions): Promise<void> {
 
   store.reset();
   store.set({ task, phase: "parsing", final_output: "" });
+
+  if (store.get().workspace.files.length === 0) {
+    log("Planner", "warn", "Workspace is empty — drop or pick at least one file before running the agent.");
+    store.set({ phase: "error" });
+    return;
+  }
+
   log("Planner", "info", `Received task: "${task}"`);
   log("Planner", "info", "Parsing natural language intent...");
   await sleep(PHASE_DELAY_MS);
