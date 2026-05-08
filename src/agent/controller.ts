@@ -1,10 +1,10 @@
-import type { PyodideInterface } from "../runtime/pyodide-loader";
+import { type PyodideInterface, ensurePackage } from "../runtime/pyodide-loader";
 import { executePythonTool } from "../runtime/bridge";
 import { store } from "../state/store";
 import { parseTask } from "./parser";
 import { route } from "./router";
 
-const PHASE_DELAY_MS = 220; // small delays let the UI breathe between phases
+const PHASE_DELAY_MS = 220;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -20,7 +20,11 @@ export async function runAgent({ task, pyodide }: RunOptions): Promise<void> {
   store.set({ task, phase: "parsing", final_output: "" });
 
   if (store.get().workspace.files.length === 0) {
-    log("Planner", "warn", "Workspace is empty — drop or pick at least one file before running the agent.");
+    log(
+      "Planner",
+      "warn",
+      "Workspace is empty — drop or pick at least one file before running the agent.",
+    );
     store.set({ phase: "error" });
     return;
   }
@@ -29,7 +33,7 @@ export async function runAgent({ task, pyodide }: RunOptions): Promise<void> {
   log("Planner", "info", "Parsing natural language intent...");
   await sleep(PHASE_DELAY_MS);
 
-  const plan = parseTask(task);
+  const plan = parseTask(task, store.get().workspace.files);
   store.set({
     steps: plan.steps,
     selectedTools: plan.selectedTools.map((t) => t.name),
@@ -44,7 +48,7 @@ export async function runAgent({ task, pyodide }: RunOptions): Promise<void> {
   );
   await sleep(PHASE_DELAY_MS);
 
-  const routed = route(plan.selectedTools);
+  const routed = route(plan.selectedTools, plan.reasons);
   log(
     "ToolRouter",
     "ok",
@@ -56,11 +60,28 @@ export async function runAgent({ task, pyodide }: RunOptions): Promise<void> {
 
   for (const step of routed) {
     store.set({ activeTool: step.tool.name });
-    log(
-      step.tool.owner,
-      "info",
-      `→ ${step.tool.name}.py — ${step.reason}`,
-    );
+    log(step.tool.owner, "info", `→ ${step.tool.name}.py — ${step.reason}`);
+
+    // Lazy-install any PyPI dependencies declared by the tool.
+    if (step.tool.pythonPackages?.length) {
+      for (const pkg of step.tool.pythonPackages) {
+        log("Pyodide", "info", `micropip → installing ${pkg}...`);
+        const tInstall = performance.now();
+        try {
+          await ensurePackage(pyodide, pkg);
+          log(
+            "Pyodide",
+            "ok",
+            `${pkg} ready (${Math.round(performance.now() - tInstall)} ms)`,
+          );
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          log("Pyodide", "error", `Failed to install ${pkg}: ${msg}`);
+          store.set({ phase: "error", activeTool: null });
+          return;
+        }
+      }
+    }
 
     try {
       const stateSnapshot = {
@@ -90,7 +111,6 @@ export async function runAgent({ task, pyodide }: RunOptions): Promise<void> {
         `Executed ${step.tool.name} in WASM (${durationMs} ms)`,
       );
 
-      // After running the summarizer, surface its prose into final_output.
       if (step.tool.kind === "summarizer" && typeof output["summary"] === "string") {
         store.set({
           phase: "summarizing",
@@ -109,7 +129,6 @@ export async function runAgent({ task, pyodide }: RunOptions): Promise<void> {
 
   store.set({ activeTool: null });
 
-  // If no summarizer ran, synthesize a fallback final output.
   if (!store.get().final_output) {
     const last = store.get().tool_history.at(-1);
     store.set({

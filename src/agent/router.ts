@@ -6,19 +6,23 @@ export interface RoutedStep {
   reason: string;
 }
 
-/**
- * Turns an ordered list of selected tools into a routed execution plan.
- * In a real framework this would resolve tool dependencies and parallelizable steps.
- */
-export function route(tools: ToolSpec[]): RoutedStep[] {
+export function route(
+  tools: ToolSpec[],
+  reasons: Record<string, string> = {},
+): RoutedStep[] {
   return tools.map((tool, i) => ({
     index: i,
     tool,
     reason:
-      tool.kind === "summarizer"
+      reasons[tool.name] ??
+      (tool.kind === "summarizer"
         ? "synthesizes prior tool outputs into prose"
         : tool.kind === "aggregator"
           ? "computes counts and totals over the inventory"
-          : "produces the inventory the rest of the chain depends on",
+          : tool.kind === "validator"
+            ? "validates structured files"
+            : tool.kind === "analyzer"
+              ? "performs domain-specific analysis"
+              : "produces the inventory the rest of the chain depends on"),
   }));
 }
