@@ -1,0 +1,21 @@
+# Netlify _redirects — copied verbatim into dist/ by Vite.
+#
+# WHY THIS FILE EXISTS
+# The npm `pyodide` package ships only the core runtime (pyodide.js,
+# pyodide.asm.wasm, python_stdlib.zip, pyodide-lock.json). It does NOT
+# ship the package wheels (micropip, packaging, numpy, pandas, ...).
+# Pyodide expects to fetch those at runtime. When `indexURL` is set to a
+# self-hosted path like /pyodide/, the wheels 404 because we never
+# deployed them. The rule below redirects every wheel request to the
+# canonical jsdelivr CDN — SRI integrity checks pass because the bytes
+# match what pyodide-lock.json declares.
+#
+# Bump the version segment whenever you upgrade the pyodide npm package.
+
+/pyodide/*.whl   https://cdn.jsdelivr.net/pyodide/v0.26.4/full/:splat   301!
+
+# SPA fallback for the agent UI. Keep this LAST — it must not shadow the
+# wheel rule above. Static assets under /pyodide/ that DO exist locally
+# (pyodide.js, .wasm, .zip, pyodide-lock.json) are served directly by
+# Netlify before reaching this rule.
+/*   /index.html   200
