@@ -110,7 +110,31 @@ __result_json__ = _json.dumps(__result__, default=str)
   console.log("\n[smoke] FINAL SUMMARY:");
   console.log("  " + summary.summary);
 
-  console.log("\n[smoke] all tools OK ✓");
+  // REPL smoke test — proves arbitrary user Python runs in the same runtime.
+  console.log("\n[smoke] testing REPL...");
+  py.globals.set("__workspace_json__", JSON.stringify(workspace));
+  await py.runPythonAsync(`
+import sys, io, json as _json
+__buf_out = io.StringIO()
+__buf_err = io.StringIO()
+__old_out, __old_err = sys.stdout, sys.stderr
+sys.stdout, sys.stderr = __buf_out, __buf_err
+try:
+    workspace_files = _json.loads(__workspace_json__)["files"]
+    print(f"REPL sees {len(workspace_files)} files")
+    print("Total bytes:", sum(f['size_bytes'] for f in workspace_files))
+finally:
+    sys.stdout, sys.stderr = __old_out, __old_err
+__repl_stdout__ = __buf_out.getvalue()
+`);
+  const replOut = py.globals.get("__repl_stdout__");
+  if (!replOut.includes("REPL sees 3 files")) {
+    throw new Error(`REPL produced wrong output: ${replOut}`);
+  }
+  console.log("  REPL stdout:", replOut.trim().replace(/\n/g, " | "));
+  console.log("  REPL ✓");
+
+  console.log("\n[smoke] all tools + REPL OK ✓");
 }
 
 function describe(out) {

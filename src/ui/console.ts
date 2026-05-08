@@ -15,6 +15,8 @@ const SOURCE_COLORS: Record<string, string> = {
   Pyodide: "text-amber-300",
   Result: "text-accent-green",
   System: "text-slate-400",
+  Workspace: "text-accent-cyan",
+  REPL: "text-accent-violet",
 };
 
 export function mountConsole(root: HTMLElement): void {

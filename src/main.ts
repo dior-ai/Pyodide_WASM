@@ -10,6 +10,7 @@ import { mountResultPanel } from "./ui/result-panel";
 import { mountToolSidebar } from "./ui/tool-sidebar";
 import { mountPhaseFlow } from "./ui/phase-flow";
 import { mountWorkspacePanel } from "./ui/workspace-panel";
+import { mountReplPanel } from "./ui/repl-panel";
 import { exportRunReport } from "./ui/export";
 
 let pyodide: PyodideInterface | null = null;
@@ -112,6 +113,7 @@ function buildLayout(): void {
   mountWorkspacePanel(left);
   mountConsole(left);
   mountResultPanel(left);
+  mountReplPanel(left, { getPyodide: () => pyodide });
   mountToolSidebar(right);
 
   // footer
