@@ -8,6 +8,7 @@ import { mountTaskInput } from "./ui/task-input";
 import { mountConsole } from "./ui/console";
 import { mountResultPanel } from "./ui/result-panel";
 import { mountToolSidebar } from "./ui/tool-sidebar";
+import { mountPhaseFlow } from "./ui/phase-flow";
 import { exportRunReport } from "./ui/export";
 
 let pyodide: PyodideInterface | null = null;
@@ -124,9 +125,10 @@ function buildLayout(): void {
         store.pushLog({ source: "System", level: "error", message });
       }
     },
-    onExport: exportRunReport,
+    onExport: (fmt) => exportRunReport(fmt),
   });
 
+  mountPhaseFlow(left);
   mountConsole(left);
   mountResultPanel(left);
   mountToolSidebar(right);

@@ -1,8 +1,9 @@
 import { store } from "../state/store";
+import type { ExportFormat } from "./export";
 
 export interface TaskInputCallbacks {
   onRun: (task: string) => void | Promise<void>;
-  onExport: () => void;
+  onExport: (format: ExportFormat) => void;
 }
 
 const SUGGESTIONS = [
@@ -32,11 +33,22 @@ export function mountTaskInput(root: HTMLElement, cb: TaskInputCallbacks): void 
         class="px-5 py-3 rounded-lg bg-accent-cyan/15 border border-accent-cyan/40 text-accent-cyan hover:bg-accent-cyan/25 hover:shadow-glow transition-all text-sm font-semibold disabled:hover:bg-accent-cyan/15 disabled:hover:shadow-none">
         ▶ Run
       </button>
-      <button id="export-btn"
-        class="px-3 py-3 rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition-all text-xs"
-        title="Export the latest run as JSON">
-        ⇩ Report
-      </button>
+      <div class="relative" id="export-wrap">
+        <button id="export-btn"
+          class="h-full px-3 py-3 rounded-lg bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10 transition-all text-xs flex items-center gap-1"
+          title="Export the latest run">
+          ⇩ Report ▾
+        </button>
+        <div id="export-menu"
+          class="hidden absolute right-0 mt-1 w-36 rounded-lg glass-strong border border-white/10 z-10 overflow-hidden">
+          <button data-fmt="json" class="export-opt w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-accent-cyan/10 hover:text-accent-cyan transition-colors text-mono">
+            ⇩ JSON
+          </button>
+          <button data-fmt="txt" class="export-opt w-full text-left px-3 py-2 text-xs text-slate-300 hover:bg-accent-cyan/10 hover:text-accent-cyan transition-colors text-mono">
+            ⇩ Plain Text
+          </button>
+        </div>
+      </div>
     </div>
 
     <div id="suggestions" class="flex flex-wrap gap-1.5"></div>
@@ -74,7 +86,21 @@ export function mountTaskInput(root: HTMLElement, cb: TaskInputCallbacks): void 
   input.addEventListener("keydown", (e) => {
     if (e.key === "Enter") trigger();
   });
-  exportBtn.addEventListener("click", () => cb.onExport());
+
+  const exportMenu = el.querySelector<HTMLElement>("#export-menu")!;
+  exportBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    exportMenu.classList.toggle("hidden");
+  });
+  document.addEventListener("click", () => exportMenu.classList.add("hidden"));
+  exportMenu.querySelectorAll<HTMLButtonElement>(".export-opt").forEach((opt) => {
+    opt.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const fmt = (opt.dataset.fmt ?? "json") as ExportFormat;
+      cb.onExport(fmt);
+      exportMenu.classList.add("hidden");
+    });
+  });
 
   store.subscribe((s) => {
     const busy =
