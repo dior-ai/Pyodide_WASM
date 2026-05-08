@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0a0e1a" />
+    <title>Pyodide Agent Runtime — Browser-Native AI</title>
+    <meta
+      name="description"
+      content="A lightweight, browser-native AI agent runtime executing Python directly in WebAssembly via Pyodide."
+    />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><circle cx='32' cy='32' r='28' fill='%2300e5ff' opacity='.15'/><circle cx='32' cy='32' r='10' fill='%2300e5ff'/></svg>" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+  </head>
+  <body class="bg-canvas text-slate-100 font-display antialiased min-h-screen">
+    <div id="app" class="min-h-screen flex flex-col"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
