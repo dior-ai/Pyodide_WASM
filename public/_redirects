@@ -5,17 +5,27 @@
 # pyodide.asm.wasm, python_stdlib.zip, pyodide-lock.json). It does NOT
 # ship the package wheels (micropip, packaging, numpy, pandas, ...).
 # Pyodide expects to fetch those at runtime. When `indexURL` is set to a
-# self-hosted path like /pyodide/, the wheels 404 because we never
-# deployed them. The rule below redirects every wheel request to the
-# canonical jsdelivr CDN — SRI integrity checks pass because the bytes
-# match what pyodide-lock.json declares.
+# self-hosted path like /pyodide/, the wheels 404, and Netlify's SPA
+# rewrite then serves index.html with 200 OK in their place. Pyodide
+# treats that as a successful fetch with the wrong bytes, the SRI
+# integrity check fails, and loadPackage errors out.
+#
+# The rule below: when a file under /pyodide/ doesn't exist locally,
+# 301-redirect the request to the canonical jsdelivr Pyodide CDN. SRI
+# passes because the CDN serves the bytes pyodide-lock.json hashes
+# against. Files that DO exist locally (pyodide.js, .wasm, .zip,
+# pyodide-lock.json) are served straight from this origin — Netlify
+# checks file existence before applying redirect rules.
+#
+# IMPORTANT NETLIFY SYNTAX NOTE
+# A splat (*) can ONLY appear at the END of the source path. So
+# `/pyodide/*.whl` is INVALID and is silently ignored — that bug shipped
+# in commit a7fa5f3 and was the reason the previous deploy still failed.
+# This rule uses `/pyodide/*` (splat at end), which is valid.
 #
 # Bump the version segment whenever you upgrade the pyodide npm package.
 
-/pyodide/*.whl   https://cdn.jsdelivr.net/pyodide/v0.26.4/full/:splat   301!
+/pyodide/*   https://cdn.jsdelivr.net/pyodide/v0.26.4/full/:splat   301
 
-# SPA fallback for the agent UI. Keep this LAST — it must not shadow the
-# wheel rule above. Static assets under /pyodide/ that DO exist locally
-# (pyodide.js, .wasm, .zip, pyodide-lock.json) are served directly by
-# Netlify before reaching this rule.
+# SPA fallback for the agent UI. Must come AFTER the /pyodide/ rule.
 /*   /index.html   200
